@@ -30,7 +30,7 @@ from bitcoinetl.mappers.transaction_mapper import BtcTransactionMapper
 from bitcoinetl.service.btc_script_service import script_asm_to_non_standard_address
 from bitcoinetl.service.genesis_transactions import GENESIS_TRANSACTIONS
 from blockchainetl.utils import rpc_response_batch_to_results, dynamic_batch_iterator
-
+import hashlib
 
 class BtcService(object):
     def __init__(self, bitcoin_rpc, chain=Chain.BITCOIN):
@@ -158,9 +158,10 @@ class BtcService(object):
             if output.addresses is None or len(output.addresses) == 0:
                 if output.type == 'pubkey':
                     output.addresses = [script_asm_to_non_standard_address(output.script_asm)]
-                else:
-                    output.type = 'nonstandard'
-                    output.addresses = ['nonstandard address']
+                if output.type == 'nonstandard':
+                    script_bytes = bytearray.fromhex(output.script_hex)
+                    script_hash = hashlib.sha256(script_bytes).hexdigest()[:40]
+                    output.addresses = ['nonstandard'+script_hash]
 
     def _add_shielded_inputs_and_outputs(self, transaction):
         if transaction.join_splits is not None and len(transaction.join_splits) > 0:
